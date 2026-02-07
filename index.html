@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Search</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        h1 { text-align: center; color: #333; }
+        .search-box { background: #f5f5f5; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; background: #007bff; color: white; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; }
+        .property { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .price { font-size: 20px; font-weight: bold; color: #007bff; }
+        .error { color: red; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>🏠 Property Search</h1>
+    
+    <div class="search-box">
+        <label>City</label>
+        <input type="text" id="city" placeholder="Enter city name">
+        
+        <div style="display: flex; gap: 10px;">
+            <div style="flex: 1;">
+                <label>Min Price</label>
+                <input type="number" id="minPrice" placeholder="Min price">
+            </div>
+            <div style="flex: 1;">
+                <label>Max Price</label>
+                <input type="number" id="maxPrice" placeholder="Max price">
+            </div>
+        </div>
+        
+        <label>Property Type</label>
+        <select id="propertyType">
+            <option value="">All Types</option>
+            <option value="Residential">Residential</option>
+            <option value="Condo">Condo</option>
+            <option value="Single Family">Single Family</option>
+        </select>
+        
+        <button id="searchBtn" onclick="searchProperties()">Search Properties</button>
+    </div>
+    
+    <div id="results"></div>
+    <p id="error" class="error"></p>
+
+    <script>
+        const API_URL = '/api/search';
+        
+        async function searchProperties() {
+            const city = document.getElementById('city').value;
+            const minPrice = document.getElementById('minPrice').value;
+            const maxPrice = document.getElementById('maxPrice').value;
+            const propertyType = document.getElementById('propertyType').value;
+            const btn = document.getElementById('searchBtn');
+            const results = document.getElementById('results');
+            const error = document.getElementById('error');
+            
+            btn.disabled = true;
+            btn.textContent = 'Searching...';
+            error.textContent = '';
+            results.innerHTML = '';
+            
+            try {
+                const params = new URLSearchParams();
+                if (city) params.append('city', city);
+                if (minPrice) params.append('minPrice', minPrice);
+                if (maxPrice) params.append('maxPrice', maxPrice);
+                if (propertyType) params.append('propertyType', propertyType);
+                
+                const response = await fetch(`${API_URL}?${params.toString()}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Search failed');
+                }
+                
+                const listings = data.Listings || [];
+                
+                if (listings.length === 0) {
+                    results.innerHTML = '<p style="text-align: center;">No properties found. Try different search criteria.</p>';
+                    return;
+                }
+                
+                results.innerHTML = listings.map(prop => `
+                    <div class="property">
+                        <h3>${prop.UnparsedAddress || 'Address not available'}</h3>
+                        <p class="price">${prop.ListPrice ? '$' + prop.ListPrice.toLocaleString() : 'Contact for price'}</p>
+                        <p>${prop.BedroomsTotal || 0} beds | ${prop.BathroomsTotal || 0} baths | ${prop.LivingArea ? prop.LivingArea.toLocaleString() + ' sqft' : ''}</p>
+                        <p>${prop.PropertyType || ''}</p>
+                    </div>
+                `).join('');
+                
+            } catch (err) {
+                error.textContent = 'Error: ' + err.message;
+                console.error('Search error:', err);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Search Properties';
+            }
+        }
+    </script>
+</body>
+</html>
